@@ -88,8 +88,9 @@ spec:
 {{ include "ksql.kafka-configuration" . | indent 10 }}
           ## ksql configuration
           ksql.service.id={{ .Release.Namespace }}.{{ $.Values.name }}_
-          ksql.sink.replicas={{ include "confluent-operator.replication_count" $ }}
-          ksql.streams.replication.factor={{ include "confluent-operator.replication_count" $ }}
+          ### Changed for CCloud 
+          ksql.sink.replicas=3
+          ksql.streams.replication.factor=3
           ksql.streams.state.dir=/mnt/data/data/ksql-state
           ksql.streams.producer.retries=2147483647
           ksql.streams.producer.confluent.batch.expiry.ms=9223372036854775807
@@ -104,10 +105,18 @@ spec:
           authentication.skip.paths=/chc/*
           java.security.auth.login.config=/mnt/config/shared/server_jaas.conf
           {{- end }}
+          ## schemaregistry configuration, configured for CCloud
           {{- if .Values.dependencies.schemaRegistry.enabled }}
           {{- $_ := required "SchemaRegistry URL required" .Values.dependencies.schemaRegistry.url }}
-          ## schemaregistry configuration
+          {{- if eq .Values.dependencies.schemaRegistry.authentication.type "basic"}}
+          ksql.schema.registry.url={{ .Values.dependencies.schemaRegistry.url }}
+          ksql.schema.registry.basic.auth.credentials.source={{ .Values.dependencies.schemaRegistry.authentication.source }}
+          ksql.schema.registry.basic.auth.user.info={{ $.Values.dependencies.schemaRegistry.authentication.username }}:{{ $.Values.dependencies.schemaRegistry.authentication.password }}
+          # End Addon for Schema Registry for CCloud
+          {{- end }}
           ksql.schema.registry.url={{ $.Values.dependencies.schemaRegistry.url }}
+          key.converter={{ $.Values.key.converter }}
+          value.converter={{ $.Values.value.converter }}
           {{- if .Values.global.authorization.rbac.enabled }}
           ksql.schema.registry.basic.auth.user.info=${file:/mnt/secrets/mds.txt:credential}
           {{- end }}
@@ -123,14 +132,16 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
-          {{- if .Values.dependencies.interceptor.enabled }}
           ## interceptor config
+          {{- if .Values.dependencies.interceptor.enabled }}
 {{ include "ksql.interceptor-security-config" . | indent 10 }}
           {{- end }}
           confluent.support.metrics.enable=true
           resource.extension.classes=io.confluent.cloud.ksql.rest.health.HealthCheckResourceExtension
           request.timeout.ms=20000
           retry.backoff.ms=500
+          ksql.internal.topic.replicas=3
+          ksql.streams.replication.factor=3
       - name: admin.properties
         value: |
           {{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}

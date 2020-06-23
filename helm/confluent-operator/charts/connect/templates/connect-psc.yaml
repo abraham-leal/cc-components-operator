@@ -40,12 +40,20 @@ spec:
 {{ include "connect.producer-interceptor-config" . | indent 10 }}
 {{ include "connect.consumer-interceptor-config" . | indent 10 }}
           {{- end }}
-          confluent.topic.replication.factor={{ include  "confluent-operator.replication_count" $ }}
+          confluent.topic.replication.factor=3
           group.id={{ $.Release.Namespace }}.{{ $.Values.name }}
           key.converter={{ $.Values.key.converter }}
           value.converter={{ $.Values.value.converter }}
           {{- if .Values.dependencies.schemaRegistry.enabled }}
           {{- $_ := required "requires schemaregistry url" .Values.dependencies.schemaRegistry.url }}
+          # Start Addon for Schema Registry for CCloud
+          {{- if eq .Values.dependencies.schemaRegistry.authentication.type "basic"}}
+          key.converter.basic.auth.credentials.source={{ .Values.dependencies.schemaRegistry.authentication.source }}
+          key.converter.basic.auth.user.info={{ $.Values.dependencies.schemaRegistry.authentication.username }}:{{ $.Values.dependencies.schemaRegistry.authentication.password }}
+          value.converter.basic.auth.credentials.source={{ .Values.dependencies.schemaRegistry.authentication.source }}
+          value.converter.basic.auth.user.info={{ $.Values.dependencies.schemaRegistry.authentication.username }}:{{ $.Values.dependencies.schemaRegistry.authentication.password }}
+          # End Addon for Schema Registry for CCloud
+          {{- end }}
           key.converter.schema.registry.url={{ .Values.dependencies.schemaRegistry.url }}
           value.converter.schema.registry.url={{ .Values.dependencies.schemaRegistry.url }}
           {{- end }}
@@ -57,11 +65,11 @@ spec:
           value.converter.schemas.enable=false
           {{- end }}
           offset.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-offsets
-          offset.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
+          offset.storage.replication.factor=3
           config.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-configs
-          config.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
+          config.storage.replication.factor=3
           status.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-status
-          status.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
+          status.storage.replication.factor=3
           offset.flush.interval.ms=10000
           plugin.path=/usr/share/java,/usr/share/confluent-hub-components
           {{- if .Values.tls.enabled }}

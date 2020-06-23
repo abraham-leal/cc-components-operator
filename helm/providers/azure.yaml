@@ -1,127 +1,77 @@
 ## Overriding values for Chart's values.yaml
-## Example values to run Confluent Operator in Azure
 global:
   provider:
     name: azure
-    region: westus
+    region: eastus #change with desired region
     kubernetes:
        deployment:
          ## If kubernetes is deployed in multi zone mode then specify availability-zones as appropriate
          ## If kubernetes is deployed in single availability zone then specify appropriate values
          zones:
+          - "0"
           - "1"
           - "2"
-    ## Docker registry endpoint where Confluent Images are available.
-    ##
+          - "3"
+          - "4"
     registry:
-      fqdn: docker.io
+      fqdn: docker.io #Modify for custom images
       credential:
         required: false
   sasl:
     plain:
-      username: test
-      password: test123
+      username: ""
+      password: ""
   authorization:
     rbac:
       enabled: false
     simple:
       enabled: false
-    superUsers: []
-  dependencies:
-    mds:
-      endpoint: ""
-      publicKey: ""
-## Zookeeper cluster
-##
-zookeeper:
-  name: zookeeper
-  replicas: 3
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-## Kafka Cluster
-##
-kafka:
-  name: kafka
-  replicas: 3
-  resources:
-    requests:
-      cpu: 200m
-      memory: 1Gi
-  loadBalancer:
-    enabled: false
-    domain: ""
-  tls:
-    enabled: false
-    fullchain: |-
-    privkey: |-
-    cacerts: |-
-  metricReporter:
-    enabled: false
 
 ## Connect Cluster
 ##
 connect:
-  name: connectors
+  name: cconnect
   replicas: 2
+  image:
+    repository: confluentinc/cp-server-connect-operator
+    tag: 5.5.0.0
+  key:
+    converter: io.confluent.connect.avro.AvroConverter
+  value:
+    converter: io.confluent.connect.avro.AvroConverter
   tls:
-    enabled: false
-    ## "" for none, "tls" for mutual auth
+    enabled: true
+    internal: true
     authentication:
-      type: ""
-    fullchain: |-
-    privkey: |-
+      type: "plain"
+    fullchain: |-    
+    privkey: |-       
     cacerts: |-
   loadBalancer:
-    enabled: false
-    domain: ""
+    enabled: true
+    domain: "aksconnect"
   dependencies:
     kafka:
-      bootstrapEndpoint: kafka:9071
-      brokerCount: 3
+      bootstrapEndpoint: "pkc-lgwgm.eastus2.azure.confluent.cloud:9092"
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: "plain"
     schemaRegistry:
       enabled: true
-      url: http://schemaregistry:8081
-## Replicator Connect Cluster
-##
-replicator:
-  name: replicator
-  replicas: 2
-  tls:
-    enabled: false
-    authentication:
-      type: ""
-    fullchain: |-
-    privkey: |-
-    cacerts: |-
-  loadBalancer:
-    enabled: false
-    domain: ""
-  dependencies:
-    kafka:
-      brokerCount: 3
-      bootstrapEndpoint: kafka:9071
-##
-## Schema Registry
-##
-schemaregistry:
-  name: schemaregistry
-  tls:
-    enabled: false
-    authentication:
-      type: ""
-    fullchain: |-
-    privkey: |-
-    cacerts: |-
-  loadBalancer:
-    enabled: false
-    domain: ""
-  dependencies:
-    kafka:
-      brokerCount: 3
-      bootstrapEndpoint: kafka:9071
+      url: "https://psrc-4r0k9.westus2.azure.confluent.cloud"
+      authentication:
+        type: basic
+        source: USER_INFO
+        username: ""
+        password: ""
+  resources:
+    requests:
+      cpu: 200m
+      memory: 4Gi
+  jvmConfig:
+    heapSize: 4G
 
 ##
 ## KSQL
@@ -129,63 +79,113 @@ schemaregistry:
 ksql:
   name: ksql
   replicas: 2
+  image:
+    repository: confluentinc/cp-ksqldb-server-operator
+    tag: 5.5.0.0
+  key:
+    converter: io.confluent.connect.avro.AvroConverter
+  value:
+    converter: io.confluent.connect.avro.AvroConverter
+  resources:
+    requests:
+      cpu: 200m
+      memory: 4Gi
+  jvmConfig:
+    heapSize: 4G
+  volume:
+    data: 1Gi
   tls:
-    enabled: false
+    enabled: true
+    internal: true
     authentication:
-      type: ""
+      type: "plain"
     fullchain: |-
     privkey: |-
     cacerts: |-
   loadBalancer:
-    enabled: false
-    domain: ""
+    enabled: true
+    domain: "aksksql"
   dependencies:
     kafka:
       brokerCount: 3
-      bootstrapEndpoint: kafka:9071
-      brokerEndpoints: kafka-0.kafka:9071,kafka-1.kafka:9071,kafka-2.kafka:9071
-    schemaRegistry:
-      enabled: false
-      tls:
-        enabled: false
+      bootstrapEndpoint: "pkc-lgwgm.eastus2.azure.confluent.cloud:9092"
+      brokerEndpoints: "pkc-lgwgm.eastus2.azure.confluent.cloud:9092"
+      tls: 
+        enabled: true
         authentication:
-          type: ""
-      url: http://schemaregistry:8081
+          type: "plain"
+        internal: true
+    schemaRegistry:
+      enabled: true
+      url: "https://psrc-4r0k9.westus2.azure.confluent.cloud"
+      authentication:
+        type: basic
+        source: USER_INFO
+        username: ""
+        password: ""
 
 ## Control Center (C3) Resource configuration
 ##
 controlcenter:
   name: controlcenter
   license: ""
+  image:
+    repository: confluentinc/cp-enterprise-control-center-operator
+    tag: 5.5.0.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 4Gi
+  jvmConfig:
+    heapSize: 4G
+  volume:
+    data0: 10Gi
   ##
   ## C3 dependencies
   ##
   dependencies:
     c3KafkaCluster:
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: "plain"
       brokerCount: 3
-      bootstrapEndpoint: kafka:9071
-      zookeeper:
-        endpoint: zookeeper:2181
+      bootstrapEndpoint: "pkc-lgwgm.eastus2.azure.confluent.cloud:9092"
     connectCluster:
       enabled: true
-      url: http://connectors:8083
+      url: https://cconnect:8083
+      tls:
+        enabled: true
+        authentication:
+          type: ""
     ksql:
       enabled: true
       url: http://ksql:9088
+      tls:
+        enabled: true
+        authentication:
+          type: ""
     schemaRegistry:
       enabled: true
-      url: http://schemaregistry:8081
+      url: "https://psrc-4r0k9.westus2.azure.confluent.cloud"
+      authentication:
+        type: basic
+        source: USER_INFO
+        username: ""
+        password: ""
   ##
   ## C3 External Access
   ##
   loadBalancer:
-    enabled: false
-    domain: ""
+    enabled: true
+    domain: "aksc3"
   ##
   ## TLS configuration
   ##
   tls:
-    enabled: false
+    enabled: true
+    internal: true
     authentication:
       type: ""
     fullchain: |-

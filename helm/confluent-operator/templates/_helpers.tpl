@@ -68,34 +68,38 @@ Distribution of pods placement based on zones
 {{- end }}
 
 {{/*
-  Find replication count based on the size of Kafka Cluster
+  Find replication count based on the size of Kafka Cluster. Not needed for CCloud
 */}}
 {{- define "confluent-operator.replication_count" }}
+{{/*
 {{- $replicas := $.kreplicas | int }}
 {{- $count := 1 }}
 {{- if lt $replicas 3 }}
 {{- $count := 1 }}
 {{- printf "%d" $count }}
 {{- else }}
+*/}}
 {{- $count := 3 }}
 {{- printf "%d" $count }}
 {{- end -}}
-{{- end -}}
+{{/*- end - */}}
 
 {{/*
   Find ISR count based on the size of Kafka Cluster
 */}}
 {{- define "confluent-operator.isr_count" }}
+{{/*
 {{- $replicas := $.kreplicas | int }}
 {{- $count := 1 }}
 {{- if lt $replicas 3 }}
 {{- $count := 1 }}
 {{- printf "%d" $count }}
 {{- else }}
+*/}}
 {{- $count := 2 }}
 {{- printf "%d" $count }}
 {{- end -}}
-{{- end -}}
+{{/* - end - +/}}
 
 {{/* Generate components labels */}}
 {{- define "confluent-operator.labels" }}
