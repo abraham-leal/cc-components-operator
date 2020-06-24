@@ -1,0 +1,52 @@
+Commands
+
+Operator:
+
+helm install -f ./providers/azure.yaml operator 
+--namespace operator 
+--set operator.enabled=true ./confluent-operator
+
+Patch:
+
+kubectl -n operator patch serviceaccount default -p '{"imagePullSecrets": [{"name": "confluent-docker-registry" }]}'
+
+Connect:
+helm upgrade connect -f ./providers/azure.yaml  \
+--namespace operator \
+--set connect.enabled=true \
+./confluent-operator \
+--set-file connect.tls.fullchain=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.crt \
+--set-file connect.tls.privkey=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.key \
+--set-file connect.tls.cacerts=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/LECA \
+--set global.sasl.plain.username=${CCLOUD_USERNAME} \
+--set global.sasl.plain.password=${CCLOUD_SECRET} \
+--set connect.dependencies.schemaRegistry.authentication.username=${SR_USERNAME} \
+--set connect.dependencies.schemaRegistry.authentication.password=${SR_SECRET}
+
+
+KSQL:
+helm upgrade ksql -f ./providers/azure.yaml  \
+--namespace operator \
+--set ksql.enabled=true \
+./confluent-operator \
+--set-file ksql.tls.fullchain=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.crt \
+--set-file ksql.tls.privkey=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.key \
+--set-file ksql.tls.cacerts=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/LECA \
+--set global.sasl.plain.username=${CCLOUD_USERNAME} \
+--set global.sasl.plain.password=${CCLOUD_SECRET} \
+--set ksql.dependencies.schemaRegistry.authentication.username=${SR_USERNAME} \
+--set ksql.dependencies.schemaRegistry.authentication.password=${SR_SECRET}
+
+C3:
+helm upgrade controlcenter -f ./providers/azure.yaml  \
+--namespace operator \
+--set controlcenter.enabled=true \
+./confluent-operator \
+--set-file controlcenter.tls.fullchain=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.crt \
+--set-file controlcenter.tls.privkey=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/server.key \
+--set-file controlcenter.tls.cacerts=/Users/aleal/Documents/Git/cc-components-operator/helm/certs/LECA \
+--set global.sasl.plain.username=${CCLOUD_USERNAME} \
+--set global.sasl.plain.password=${CCLOUD_SECRET} \
+--set controlcenter.dependencies.schemaRegistry.authentication.username=${SR_USERNAME} \
+--set controlcenter.dependencies.schemaRegistry.authentication.password=${SR_SECRET}
+
