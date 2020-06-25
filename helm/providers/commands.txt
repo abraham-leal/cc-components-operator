@@ -1,14 +1,15 @@
 Commands
 
+To install Operator without cluster-level permissions, pre-install custom resources with the following command
+(ran within the helm folder):
+
+kubectl apply -f resources/crds
+
 Operator:
 
-helm install -f ./providers/azure.yaml operator 
---namespace operator 
+helm install -f ./providers/azure.yaml operator \
+--namespace operator \
 --set operator.enabled=true ./confluent-operator
-
-Patch:
-
-kubectl -n operator patch serviceaccount default -p '{"imagePullSecrets": [{"name": "confluent-docker-registry" }]}'
 
 Connect:
 helm upgrade connect -f ./providers/azure.yaml  \
@@ -49,4 +50,6 @@ helm upgrade controlcenter -f ./providers/azure.yaml  \
 --set global.sasl.plain.password=${CCLOUD_SECRET} \
 --set controlcenter.dependencies.schemaRegistry.authentication.username=${SR_USERNAME} \
 --set controlcenter.dependencies.schemaRegistry.authentication.password=${SR_SECRET}
+
+Per https://github.com/confluentinc/blueway/blob/eb93f4ab69fbec1075398aca36c57bd904610068/control-center/src/main/java/io/confluent/controlcenter/ControlCenterConfig.java#L1239, confluent.controlcenter.schema.registry.basic.auth.user.info  in https://docs.confluent.io/current/control-center/installation/configuration.html is the wrong configuration. Namely, "schema.registry" is repeated
 

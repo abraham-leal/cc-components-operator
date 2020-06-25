@@ -17,6 +17,8 @@ global:
       fqdn: docker.io #Modify for custom images
       credential:
         required: false
+        username: ""
+        password: ""
   sasl:
     plain:
       username: ""
@@ -26,6 +28,11 @@ global:
       enabled: false
     simple:
       enabled: false
+
+operator:
+  ### Add Confluent License to this value through run-time injection
+  licenseKey: ""
+  namespaced: true
 
 ## Connect Cluster
 ##
@@ -48,8 +55,9 @@ connect:
     privkey: |-       
     cacerts: |-
   loadBalancer:
-    enabled: true
-    domain: "aksconnect"
+    enabled: false
+    type: internal
+    domain: ""
   dependencies:
     kafka:
       bootstrapEndpoint: "pkc-lgwgm.eastus2.azure.confluent.cloud:9092"
@@ -103,8 +111,9 @@ ksql:
     privkey: |-
     cacerts: |-
   loadBalancer:
-    enabled: true
-    domain: "aksksql"
+    enabled: false
+    type: internal
+    domain: ""
   dependencies:
     kafka:
       brokerCount: 3
@@ -128,6 +137,7 @@ ksql:
 ##
 controlcenter:
   name: controlcenter
+  ### Add license here through run-time injection
   license: ""
   image:
     repository: confluentinc/cp-enterprise-control-center-operator
@@ -178,8 +188,9 @@ controlcenter:
   ## C3 External Access
   ##
   loadBalancer:
-    enabled: true
-    domain: "aksc3"
+    enabled: false
+    type: internal
+    domain: ""
   ##
   ## TLS configuration
   ##
