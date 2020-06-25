@@ -1,7 +1,7 @@
 Commands
 
 To install Operator without cluster-level permissions, pre-install custom resources with the following command
-(ran within the helm folder):
+(ran within the root folder):
 
 kubectl apply -f resources/crds
 
