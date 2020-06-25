@@ -91,12 +91,12 @@ spec:
           {{- end }}
           {{- if .Values.dependencies.schemaRegistry.enabled }}
           {{- $_ := required "SchemaRegistry URL is required" .Values.dependencies.schemaRegistry.url }}
+          confluent.controlcenter.schema.registry.enable=true
+          confluent.controlcenter.schema.registry.url={{ .Values.dependencies.schemaRegistry.url }}
           {{- if eq .Values.dependencies.schemaRegistry.authentication.type "basic"}}
           confluent.controlcenter.schema.registry.basic.auth.credentials.source={{ .Values.dependencies.schemaRegistry.authentication.source }}
           confluent.controlcenter.schema.registry.basic.auth.user.info={{ $.Values.dependencies.schemaRegistry.authentication.username }}:{{ $.Values.dependencies.schemaRegistry.authentication.password }}
           {{- end }}
-          confluent.controlcenter.schema.registry.enable=true
-          confluent.controlcenter.schema.registry.url={{ .Values.dependencies.schemaRegistry.url }}
           {{- else }}
           confluent.controlcenter.schema.registry.enable=false
           {{- end }}
