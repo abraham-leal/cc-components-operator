@@ -1,0 +1,376 @@
+global:
+  provider:
+    name: gcp
+    region: us-central1
+    kubernetes:
+       deployment:
+         zones:
+          - us-central1-a
+    registry:
+      fqdn: docker.io
+      credential:
+        required: false
+  authorization:
+    rbac:
+      enabled: true
+    superUsers: ["User:kafka","User:superUser", "User:mds", "User:admin"]
+  sasl:
+    plain:
+      username: kafka
+      password: kafka-secret
+  dependencies:
+    mds:
+      endpoint: "http://kafka.superDomain.com:80"
+      publicKey: |-
+        -----BEGIN PUBLIC KEY-----
+        ...
+        -----END PUBLIC KEY-----
+
+operator:
+  image:
+    repository: confluentinc/cp-operator-service
+    tag: 0.364.0
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+          
+zookeeper:
+  name: zookeeper
+  replicas: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  image:
+    repository: confluentinc/cp-zookeeper-operator
+    tag: 5.5.2.0
+
+## Kafka Cluster
+##
+kafka:
+  name: kafka
+  replicas: 3
+  image:
+    repository: confluentinc/cp-server-operator
+    tag: 5.5.2.0
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1Gi
+  loadBalancer:
+    enabled: true
+    domain: "superDomain.com"
+  tls:
+    enabled: true
+    authentication:
+      type: tls
+      principalMappingRules:                               
+          - RULE:^CN=(.*?),OU=(.*?),O=(.*?),L=(.*?),ST=(.*?),C=(.*?).*$/$1/
+          - DEFAULT
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----    
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    jksPassword: customPass
+  metricReporter:
+    enabled: true
+    tls: 
+      enabled: false
+      authentication:
+        type: 
+    bootstrapEndpoint: kafka:9071
+  services:
+    mds:
+      https: false
+      tokenKeyPair: |-
+        -----BEGIN RSA PRIVATE KEY-----
+        ...
+        -----END RSA PRIVATE KEY-----
+      ldap:
+        address: "ldap://ldap-service:389"
+        authentication:
+          simple:
+              credentials: "admin"
+              principal: "cn=admin,dc=confluentdemo,dc=io"
+        configurations:
+          groupNameAttribute: "cn"
+          groupObjectClass: "posixGroup"
+          groupMemberAttribute: "memberUid"
+          groupMemberAttributePattern: "cn=(.*),ou=users,dc=confluentdemo,dc=io"
+          groupSearchBase: "ou=groups,dc=confluentdemo,dc=io"
+          userNameAttribute: "cn"
+          userMemberOfAttributePattern: "cn=(.*),ou=groups,dc=confluentdemo,dc=io"
+          userObjectClass: "inetOrgPerson"
+          userSearchBase: "dc=confluentdemo,dc=io"
+  configOverrides:
+    log4j:
+      - "log4j.rootLogger=DEBUG, stdout, kafkaAppender"
+      - "some.setting={{ .Values.global.sasl.plain.username }}"
+    server:
+      - "ldap.user.search.scope=2"
+      - "ldap.search.mode=USERS"
+
+
+
+
+## Connect Cluster
+##
+connect:
+  name: connect
+  key:
+    converter: io.confluent.connect.avro.AvroConverter
+  value:
+    converter: io.confluent.connect.avro.AvroConverter
+  schemas:
+    enabled: false
+  replicas: 2
+  image:
+    repository: abrahamleal/cp-datagen
+    tag: 1.0.0.0
+  tls:
+    enabled: false
+    authentication:
+      type: ""
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----    
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+  loadBalancer:
+    enabled: true
+    domain: "superDomain.com"
+  dependencies:
+    interceptor:
+      enabled: true
+    kafka:
+      bootstrapEndpoint: kafka:9092
+      brokerCount: 3
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: tls
+    schemaRegistry:
+      enabled: true
+      url: http://schemaregistry:8081
+    mds:
+      authentication:
+        username: "connectAdmin"
+        password: "connectAdmin"
+
+##
+## Schema Registry
+##
+schemaregistry:
+  name: schemaregistry
+  image:
+    repository: confluentinc/cp-schema-registry-operator
+    tag: 5.5.2.0
+  tls:
+    enabled: false
+    authentication:
+      type: ""
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----      
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+  loadBalancer:
+    enabled: true
+    domain: "superDomain.com"
+  dependencies:
+    mds:
+      authentication:
+        username: "schemaregistryUser"
+        password: "schemaregistryUser"
+      zookeeper:
+        endpoint: "zookeeper:2181"
+    kafka:
+      brokerCount: 3
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: tls
+      bootstrapEndpoint: kafka:9092
+
+##
+## KSQL
+##
+ksql:
+  name: ksql
+  replicas: 2
+  image:
+    repository: confluentinc/cp-ksqldb-server-operator
+    tag: 5.5.2.0
+  tls:
+    enabled: false
+    authentication:
+      type: 
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----          
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+  loadBalancer:
+    enabled: true
+    domain: "ksql.superDomain.com"
+  dependencies:
+    interceptor:
+      enabled: true
+    mds:
+      authentication:
+        username: "ksqlDBAdmin"
+        password: "ksqlDBAdmin"
+    kafka:
+      brokerCount: 3
+      bootstrapEndpoint: kafka:9092
+      brokerEndpoints: kafka:9092
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: tls
+    schemaRegistry:
+      enabled: true
+      tls:
+        enabled: false
+        authentication:
+          type: ""
+      url: http://schemaregistry:8081
+
+## Control Center (C3) Resource configuration
+##
+controlcenter:
+  name: controlcenter
+  license: ""
+  image:
+    repository: confluentinc/cp-enterprise-control-center-operator
+    tag: 5.5.2.0
+  dependencies:
+    replicatorMonitoring:
+      enabled: true
+      source:
+        bootstrapEndpoint: kafka.operator.svc.cluster.local:9092
+        tls:
+          enabled: true
+          internal: true
+          authentication:
+            type: tls
+    mds:
+      authentication:
+        username: "controlcenterAdmin"
+        password: "controlcenterAdmin"
+    c3KafkaCluster:
+      brokerCount: 3
+      bootstrapEndpoint: kafka:9092
+      zookeeper:
+        endpoint: zookeeper:2181
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: tls
+    connectCluster:
+      enabled: true
+      url: http://connect:8083
+    ksql:
+      enabled: true
+      advertisedUrl: http://52.191.221.201:80
+      url: http://ksql:9088
+    schemaRegistry:
+      enabled: true
+      url: http://schemaregistry:8081
+  ##
+  ## C3 External Access
+  ##
+  loadBalancer:
+    enabled: true
+    domain: "c3.loadbalancing.com"
+  ##
+  ## TLS configuration
+  ##
+  tls:
+    enabled: false
+    authentication:
+      type: ""
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----  
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+
+replicator:
+  name: replicator
+  replicas: 2
+  dependencies:
+    kafka:
+      tls:
+        enabled: true
+        internal: true
+        authentication:
+          type: tls
+      brokerCount: 3
+      bootstrapEndpoint: kafka:9092
+    mds:
+      authentication:
+        username: "connectAdmin"
+        password: "connectAdmin"
+  tls:
+    enabled: false
+    fullchain: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
+    privkey: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----  
+    cacerts: |-
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
